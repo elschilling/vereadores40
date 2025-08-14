@@ -30,11 +30,11 @@ const params = {
   month: new Date().getMonth() + 1,
   latitude: -23.029396,
   longitude: -46.974293,
-  northOffset: 303,
-  radius: 18,
-  baseY: 0,
+  northOffset: 103,
+  radius: 28,
+  baseY: -2,
   timeSpeed: 100,
-  shadowBias: -0.00086
+  shadowBias: -0.00086,
 }
 
 const skyControl = {
@@ -42,7 +42,7 @@ const skyControl = {
   rayleigh: 0.425,
   mieCoefficient: 0.012,
   mieDirectionalG: 1,
-  exposure: 6.99
+  exposure: 6.99,
 }
 
 const cameraControl = {
@@ -57,7 +57,7 @@ const cameraControl = {
     loop.camera = birdCamera
     resizer.camera = birdCamera
     resizer.onResize()
-  }
+  },
 }
 
 let tl = gsap.timeline({ repeta: -1 })
@@ -83,26 +83,26 @@ class World {
 
     const { ambientLight, sunLight } = createLights()
     sunLight.shadow.camera.top = params.radius
-    sunLight.shadow.camera.bottom = - params.radius
-    sunLight.shadow.camera.left = - params.radius
+    sunLight.shadow.camera.bottom = -params.radius
+    sunLight.shadow.camera.left = -params.radius
     sunLight.shadow.camera.right = params.radius
     sunLight.shadow.bias = params.shadowBias
 
     const sunSphere = createSunSphere()
-    
+
     const base = createBase(params)
     const sunPath = new SunPath(params, sunSphere, sunLight, base)
 
     const sky = new DynamicSky(skyControl, sunPath.sphereLight, renderer)
-        
+
     const sunHelper = createDirectionalLightHelper(sunLight)
     const sunShadowHelper = createShadowCameraHelper(sunLight)
     // const axesHelper = createAxesHelper(30)
     sunShadowHelper.visible = false
-    
+
     loop.updatables.push(base, controls, sunPath, sky)
-    
-    scene.add(sky.sky, ambientLight, sunHelper, sunShadowHelper, sunPath.sunPathLight )
+
+    scene.add(sky.sky, ambientLight, sunHelper, sunShadowHelper, sunPath.sunPathLight)
 
     this.gui = createGUI(params, ambientLight, sunLight, sunHelper, sunShadowHelper, sunPath, controls, skyControl, cameraControl)
     resizer = new Resizer(container, activeCamera, renderer)
@@ -123,7 +123,7 @@ class World {
   start() {
     loop.start()
   }
-  
+
   stop() {
     loop.stop()
   }

@@ -30,7 +30,7 @@ const params = {
   month: new Date().getMonth() + 1,
   latitude: -23.029396,
   longitude: -46.974293,
-  northOffset: 103,
+  northOffset: -103,
   radius: 28,
   baseY: -2,
   timeSpeed: 100,

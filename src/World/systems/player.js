@@ -110,8 +110,9 @@ class VirtualJoystick {
 
 // Touch Look Controls Class
 class TouchLookControls {
-  constructor(camera) {
+  constructor(camera, canvas = null) {
     this.camera = camera
+    this.canvas = canvas // Pass your canvas/renderer domElement here
     this.isLooking = false
     this.previousTouch = { x: 0, y: 0 }
     this.sensitivity = 0.002
@@ -150,14 +151,23 @@ class TouchLookControls {
   }
 
   addEventListeners() {
-    document.body.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false })
-    document.body.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false })
-    document.body.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false })
+    // Target only the canvas if provided, otherwise use a more specific approach
+    const target = this.canvas || document.body
+
+    // Use capture phase to intercept before other handlers
+    target.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false, capture: false })
+    target.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false, capture: false })
+    target.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false, capture: false })
   }
 
   handleTouchStart(e) {
-    // Ignore touches on UI elements (menus, buttons, joystick, etc.)
-    if (this.shouldIgnoreTouch(e.touches[0])) {
+    // If we have a canvas, only respond to touches on the canvas
+    if (this.canvas && e.target !== this.canvas) {
+      return
+    }
+
+    // For document.body, check if we should ignore this touch
+    if (!this.canvas && this.shouldIgnoreTouch(e.touches[0])) {
       return
     }
 
@@ -197,6 +207,10 @@ class TouchLookControls {
       '#menu',
       '#ui',
       '#controls',
+      // Add your specific menu classes here
+      '.your-menu-class-name', // Replace with your actual menu class
+      '.controls-panel', // Add any other specific classes
+      '.settings-menu', // Add as many as needed
     ]
 
     // Check if element or any parent matches UI selectors
@@ -214,12 +228,14 @@ class TouchLookControls {
 
       if (typeof className === 'string') {
         if (
-          className.includes('lil-gui') ||
-          className.includes('title') ||
+          className.includes('menu') ||
+          className.includes('ui') ||
           className.includes('control') ||
           className.includes('button') ||
-          className.includes('btn')
+          className.includes('btn') ||
+          className.includes('your-menu-class-name')
         ) {
+          // Add your specific class check
           return true
         }
       }
@@ -234,8 +250,10 @@ class TouchLookControls {
       if (
         currentElement.onclick ||
         currentElement.getAttribute('role') === 'button' ||
-        currentElement.getAttribute('data-clickable') === 'true'
+        currentElement.getAttribute('data-clickable') === 'true' ||
+        currentElement.getAttribute('data-ui') === 'true'
       ) {
+        // Add this attribute to your menu elements
         return true
       }
 
@@ -283,7 +301,7 @@ class TouchLookControls {
   }
 }
 
-function createPlayer(camera, geometry) {
+function createPlayer(camera, geometry, canvas = null) {
   const GRAVITY = 30
   const STEPS_PER_FRAME = 5
 
@@ -300,7 +318,7 @@ function createPlayer(camera, geometry) {
 
   // Initialize mobile controls
   const virtualJoystick = new VirtualJoystick()
-  const touchLookControls = new TouchLookControls(camera)
+  const touchLookControls = new TouchLookControls(camera, canvas)
 
   // Desktop keyboard events
   document.addEventListener('keydown', (event) => {

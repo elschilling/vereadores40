@@ -116,7 +116,7 @@ class World {
     }
     scene.add(house, birds)
     tl.to(birds.position, { duration: 60, delay: 1, x: 100, z: 120 })
-    const player = createPlayer(firstPersonCamera, house)
+    const player = createPlayer(firstPersonCamera, house, renderer.domElement)
     // player.showMobileControls()
     loop.updatables.push(player)
   }

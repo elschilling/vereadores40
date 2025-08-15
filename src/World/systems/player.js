@@ -60,7 +60,7 @@ class VirtualJoystick {
   }
 
   handleTouchStart(e) {
-    e.preventDefault()
+    // e.preventDefault()
     this.isActive = true
     const rect = this.joystickContainer.getBoundingClientRect()
     this.centerX = rect.left + rect.width / 2
@@ -69,7 +69,7 @@ class VirtualJoystick {
 
   handleTouchMove(e) {
     if (!this.isActive) return
-    e.preventDefault()
+    // e.preventDefault()
 
     const touch = e.touches[0]
     const deltaX = touch.clientX - this.centerX
@@ -89,7 +89,7 @@ class VirtualJoystick {
   }
 
   handleTouchEnd(e) {
-    e.preventDefault()
+    // e.preventDefault()
     this.isActive = false
     this.joystick.style.transform = 'translate(-50%, -50%)'
     this.direction = { x: 0, y: 0 }
@@ -190,30 +190,7 @@ class TouchLookControls {
       return true
     }
 
-    // Check for common UI element selectors and attributes
-    const uiSelectors = [
-      'button',
-      'a',
-      'input',
-      'select',
-      'textarea',
-      '[role="button"]',
-      '[onclick]',
-      '.menu',
-      '.ui',
-      '.controls',
-      '.button',
-      '.btn',
-      '#menu',
-      '#ui',
-      '#controls',
-      // Add your specific menu classes here
-      '.your-menu-class-name', // Replace with your actual menu class
-      '.controls-panel', // Add any other specific classes
-      '.settings-menu', // Add as many as needed
-    ]
-
-    // Check if element or any parent matches UI selectors
+    // Check if element or any parent matches UI criteria
     let currentElement = element
     while (currentElement && currentElement !== document.body) {
       // Check tag name
@@ -224,6 +201,7 @@ class TouchLookControls {
 
       // Check for UI-related classes or IDs
       const className = currentElement.className
+      console.log('className', className)
       const id = currentElement.id
 
       if (typeof className === 'string') {
@@ -232,10 +210,8 @@ class TouchLookControls {
           className.includes('ui') ||
           className.includes('control') ||
           className.includes('button') ||
-          className.includes('btn') ||
-          className.includes('your-menu-class-name')
+          className.includes('lil-gui')
         ) {
-          // Add your specific class check
           return true
         }
       }
@@ -253,7 +229,6 @@ class TouchLookControls {
         currentElement.getAttribute('data-clickable') === 'true' ||
         currentElement.getAttribute('data-ui') === 'true'
       ) {
-        // Add this attribute to your menu elements
         return true
       }
 

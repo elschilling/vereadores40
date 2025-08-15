@@ -156,9 +156,8 @@ class TouchLookControls {
   }
 
   handleTouchStart(e) {
-    // Ignore touches on the joystick area
-    const joystick = document.querySelector('[style*="bottom: 50px"]')
-    if (joystick && this.isTouchOverElement(e.touches[0], joystick)) {
+    // Ignore touches on UI elements (menus, buttons, joystick, etc.)
+    if (this.shouldIgnoreTouch(e.touches[0])) {
       return
     }
 
@@ -170,8 +169,93 @@ class TouchLookControls {
     }
   }
 
+  shouldIgnoreTouch(touch) {
+    // Get element at touch position
+    const element = document.elementFromPoint(touch.clientX, touch.clientY)
+    if (!element) return false
+
+    // Check if touch is on joystick
+    const joystick = document.querySelector('[style*="bottom: 50px"]')
+    if (joystick && this.isTouchOverElement(touch, joystick)) {
+      return true
+    }
+
+    // Check for common UI element selectors and attributes
+    const uiSelectors = [
+      'button',
+      'a',
+      'input',
+      'select',
+      'textarea',
+      '[role="button"]',
+      '[onclick]',
+      '.menu',
+      '.ui',
+      '.controls',
+      '.button',
+      '.btn',
+      '#menu',
+      '#ui',
+      '#controls',
+    ]
+
+    // Check if element or any parent matches UI selectors
+    let currentElement = element
+    while (currentElement && currentElement !== document.body) {
+      // Check tag name
+      const tagName = currentElement.tagName.toLowerCase()
+      if (['button', 'a', 'input', 'select', 'textarea'].includes(tagName)) {
+        return true
+      }
+
+      // Check for UI-related classes or IDs
+      const className = currentElement.className
+      const id = currentElement.id
+
+      if (typeof className === 'string') {
+        if (
+          className.includes('menu') ||
+          className.includes('ui') ||
+          className.includes('control') ||
+          className.includes('button') ||
+          className.includes('btn')
+        ) {
+          return true
+        }
+      }
+
+      if (typeof id === 'string') {
+        if (id.includes('menu') || id.includes('ui') || id.includes('control')) {
+          return true
+        }
+      }
+
+      // Check for click handlers or role attributes
+      if (
+        currentElement.onclick ||
+        currentElement.getAttribute('role') === 'button' ||
+        currentElement.getAttribute('data-clickable') === 'true'
+      ) {
+        return true
+      }
+
+      // Check for high z-index (likely UI elements)
+      const zIndex = window.getComputedStyle(currentElement).zIndex
+      if (zIndex && parseInt(zIndex) > 100) {
+        return true
+      }
+
+      currentElement = currentElement.parentElement
+    }
+
+    return false
+  }
+
   handleTouchMove(e) {
     if (!this.isLooking || e.touches.length !== 1) return
+
+    // Don't prevent default if we're not actively looking
+    // This allows scrolling and interaction with UI elements
     e.preventDefault()
 
     const touch = e.touches[0]

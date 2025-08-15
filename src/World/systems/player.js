@@ -214,8 +214,8 @@ class TouchLookControls {
 
       if (typeof className === 'string') {
         if (
-          className.includes('menu') ||
-          className.includes('ui') ||
+          className.includes('lil-gui') ||
+          className.includes('title') ||
           className.includes('control') ||
           className.includes('button') ||
           className.includes('btn')

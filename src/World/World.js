@@ -51,12 +51,26 @@ const cameraControl = {
     loop.camera = firstPersonCamera
     resizer.camera = firstPersonCamera
     resizer.onResize()
+
+    // Enable mobile controls for first person
+    if (window.player) {
+      console.log('Switching to first person, enabling mobile controls')
+      window.player.updateCamera(firstPersonCamera)
+      window.player.setFirstPersonMode(true)
+    }
   },
   birdView() {
     activeCamera = birdCamera
     loop.camera = birdCamera
     resizer.camera = birdCamera
     resizer.onResize()
+
+    // Disable mobile controls for bird view
+    if (window.player) {
+      console.log('Switching to bird view, disabling mobile controls')
+      window.player.updateCamera(birdCamera)
+      window.player.setFirstPersonMode(false)
+    }
   },
 }
 
@@ -118,6 +132,7 @@ class World {
     tl.to(birds.position, { duration: 60, delay: 1, x: 100, z: 120 })
     const player = createPlayer(firstPersonCamera, house, renderer.domElement)
     // player.showMobileControls()
+    window.player = player
     loop.updatables.push(player)
   }
 

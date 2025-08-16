@@ -2,6 +2,192 @@ import { Octree } from 'three/examples/jsm/math/Octree'
 import { Capsule } from 'three/examples/jsm/math/Capsule'
 import { Vector3 } from 'three'
 
+// Touch Look Controls Function (more reliable than class)
+function createTouchLookControls(camera, canvas = null) {
+  const controls = {
+    camera: camera,
+    canvas: canvas,
+    isLooking: false,
+    previousTouch: { x: 0, y: 0 },
+    sensitivity: 0.002,
+    enabled: false,
+    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+  }
+
+  function setupMobileOptimizations() {
+    // Prevent zoom and improve touch handling
+    document.addEventListener(
+      'touchstart',
+      function (e) {
+        if (e.touches.length > 1) {
+          // e.preventDefault();
+        }
+      },
+      { passive: false }
+    )
+
+    // Prevent context menu on long press
+    document.addEventListener('contextmenu', function (e) {
+      // e.preventDefault();
+    })
+
+    // Add viewport meta tag if not present
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const viewport = document.createElement('meta')
+      viewport.name = 'viewport'
+      viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no'
+      document.head.appendChild(viewport)
+    }
+  }
+
+  function shouldIgnoreTouch(touch) {
+    const element = document.elementFromPoint(touch.clientX, touch.clientY)
+    if (!element) return false
+
+    // Check if touch is on joystick
+    const joystick = document.querySelector('[style*="bottom: 50px"]')
+    if (joystick && isTouchOverElement(touch, joystick)) {
+      return true
+    }
+
+    let currentElement = element
+    while (currentElement && currentElement !== document.body) {
+      const tagName = currentElement.tagName.toLowerCase()
+      if (['button', 'a', 'input', 'select', 'textarea'].includes(tagName)) {
+        return true
+      }
+
+      const className = currentElement.className
+      const id = currentElement.id
+
+      if (typeof className === 'string') {
+        if (
+          className.includes('menu') ||
+          className.includes('ui') ||
+          className.includes('control') ||
+          className.includes('button') ||
+          className.includes('btn')
+        ) {
+          return true
+        }
+      }
+
+      if (typeof id === 'string') {
+        if (id.includes('menu') || id.includes('ui') || id.includes('control')) {
+          return true
+        }
+      }
+
+      if (
+        currentElement.onclick ||
+        currentElement.getAttribute('role') === 'button' ||
+        currentElement.getAttribute('data-clickable') === 'true' ||
+        currentElement.getAttribute('data-ui') === 'true'
+      ) {
+        return true
+      }
+
+      const zIndex = window.getComputedStyle(currentElement).zIndex
+      if (zIndex && parseInt(zIndex) > 100) {
+        return true
+      }
+
+      currentElement = currentElement.parentElement
+    }
+
+    return false
+  }
+
+  function isTouchOverElement(touch, element) {
+    const rect = element.getBoundingClientRect()
+    return touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom
+  }
+
+  function handleTouchStart(e) {
+    if (!controls.enabled) {
+      console.log('TouchLookControls: disabled, ignoring touch')
+      return
+    }
+
+    if (controls.canvas && e.target !== controls.canvas) {
+      console.log('TouchLookControls: touch not on canvas, ignoring')
+      return
+    }
+
+    if (!controls.canvas && shouldIgnoreTouch(e.touches[0])) {
+      console.log('TouchLookControls: touch on UI element, ignoring')
+      return
+    }
+
+    if (e.touches.length === 1) {
+      console.log('TouchLookControls: starting look')
+      controls.isLooking = true
+      controls.previousTouch.x = e.touches[0].clientX
+      controls.previousTouch.y = e.touches[0].clientY
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (!controls.enabled || !controls.isLooking || e.touches.length !== 1) return
+
+    console.log('TouchLookControls: moving camera')
+
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - controls.previousTouch.x
+    const deltaY = touch.clientY - controls.previousTouch.y
+
+    controls.camera.rotation.y -= deltaX * controls.sensitivity
+    controls.camera.rotation.x -= deltaY * controls.sensitivity
+
+    controls.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, controls.camera.rotation.x))
+
+    controls.previousTouch.x = touch.clientX
+    controls.previousTouch.y = touch.clientY
+  }
+
+  function handleTouchEnd(e) {
+    controls.isLooking = false
+  }
+
+  function addEventListeners() {
+    const target = controls.canvas || document
+
+    target.addEventListener('touchstart', handleTouchStart, { passive: true, capture: false })
+    target.addEventListener('touchmove', handleTouchMove, { passive: true, capture: false })
+    target.addEventListener('touchend', handleTouchEnd, { passive: true, capture: false })
+
+    console.log('TouchLookControls: event listeners added to', target === controls.canvas ? 'canvas' : 'document')
+  }
+
+  // Initialize
+  if (controls.isMobile) {
+    addEventListeners()
+    setupMobileOptimizations()
+  }
+
+  // Public methods
+  controls.enable = function () {
+    console.log('TouchLookControls: enabled')
+    controls.enabled = true
+  }
+
+  controls.disable = function () {
+    console.log('TouchLookControls: disabled')
+    controls.enabled = false
+    controls.isLooking = false
+  }
+
+  controls.getState = function () {
+    return {
+      enabled: controls.enabled,
+      isLooking: controls.isLooking,
+      isMobile: controls.isMobile,
+    }
+  }
+
+  return controls
+}
+
 // Virtual Joystick Class
 class VirtualJoystick {
   constructor() {
@@ -60,7 +246,7 @@ class VirtualJoystick {
   }
 
   handleTouchStart(e) {
-    // e.preventDefault()
+    // e.preventDefault();
     this.isActive = true
     const rect = this.joystickContainer.getBoundingClientRect()
     this.centerX = rect.left + rect.width / 2
@@ -69,7 +255,7 @@ class VirtualJoystick {
 
   handleTouchMove(e) {
     if (!this.isActive) return
-    // e.preventDefault()
+    // e.preventDefault();
 
     const touch = e.touches[0]
     const deltaX = touch.clientX - this.centerX
@@ -89,7 +275,7 @@ class VirtualJoystick {
   }
 
   handleTouchEnd(e) {
-    // e.preventDefault()
+    // e.preventDefault();
     this.isActive = false
     this.joystick.style.transform = 'translate(-50%, -50%)'
     this.direction = { x: 0, y: 0 }
@@ -108,174 +294,6 @@ class VirtualJoystick {
   }
 }
 
-// Touch Look Controls Class
-class TouchLookControls {
-  constructor(camera, canvas = null) {
-    this.camera = camera
-    this.canvas = canvas // Pass your canvas/renderer domElement here
-    this.isLooking = false
-    this.previousTouch = { x: 0, y: 0 }
-    this.sensitivity = 0.002
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-    if (this.isMobile) {
-      this.addEventListeners()
-      this.setupMobileOptimizations()
-    }
-  }
-
-  setupMobileOptimizations() {
-    // Prevent zoom and improve touch handling
-    document.addEventListener(
-      'touchstart',
-      function (e) {
-        if (e.touches.length > 1) {
-          e.preventDefault()
-        }
-      },
-      { passive: false }
-    )
-
-    // Prevent context menu on long press
-    document.addEventListener('contextmenu', function (e) {
-      e.preventDefault()
-    })
-
-    // Add viewport meta tag if not present
-    if (!document.querySelector('meta[name="viewport"]')) {
-      const viewport = document.createElement('meta')
-      viewport.name = 'viewport'
-      viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no'
-      document.head.appendChild(viewport)
-    }
-  }
-
-  addEventListeners() {
-    // Target only the canvas if provided, otherwise use a more specific approach
-    const target = this.canvas || document.body
-
-    // Use capture phase to intercept before other handlers
-    target.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false, capture: false })
-    target.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false, capture: false })
-    target.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false, capture: false })
-  }
-
-  handleTouchStart(e) {
-    // If we have a canvas, only respond to touches on the canvas
-    if (this.canvas && e.target !== this.canvas) {
-      return
-    }
-
-    // For document.body, check if we should ignore this touch
-    if (!this.canvas && this.shouldIgnoreTouch(e.touches[0])) {
-      return
-    }
-
-    if (e.touches.length === 1) {
-      e.preventDefault()
-      this.isLooking = true
-      this.previousTouch.x = e.touches[0].clientX
-      this.previousTouch.y = e.touches[0].clientY
-    }
-  }
-
-  shouldIgnoreTouch(touch) {
-    // Get element at touch position
-    const element = document.elementFromPoint(touch.clientX, touch.clientY)
-    if (!element) return false
-
-    // Check if touch is on joystick
-    const joystick = document.querySelector('[style*="bottom: 50px"]')
-    if (joystick && this.isTouchOverElement(touch, joystick)) {
-      return true
-    }
-
-    // Check if element or any parent matches UI criteria
-    let currentElement = element
-    while (currentElement && currentElement !== document.body) {
-      // Check tag name
-      const tagName = currentElement.tagName.toLowerCase()
-      if (['button', 'a', 'input', 'select', 'textarea'].includes(tagName)) {
-        return true
-      }
-
-      // Check for UI-related classes or IDs
-      const className = currentElement.className
-      console.log('className', className)
-      const id = currentElement.id
-
-      if (typeof className === 'string') {
-        if (
-          className.includes('menu') ||
-          className.includes('ui') ||
-          className.includes('control') ||
-          className.includes('button') ||
-          className.includes('lil-gui')
-        ) {
-          return true
-        }
-      }
-
-      if (typeof id === 'string') {
-        if (id.includes('menu') || id.includes('ui') || id.includes('control')) {
-          return true
-        }
-      }
-
-      // Check for click handlers or role attributes
-      if (
-        currentElement.onclick ||
-        currentElement.getAttribute('role') === 'button' ||
-        currentElement.getAttribute('data-clickable') === 'true' ||
-        currentElement.getAttribute('data-ui') === 'true'
-      ) {
-        return true
-      }
-
-      // Check for high z-index (likely UI elements)
-      const zIndex = window.getComputedStyle(currentElement).zIndex
-      if (zIndex && parseInt(zIndex) > 100) {
-        return true
-      }
-
-      currentElement = currentElement.parentElement
-    }
-
-    return false
-  }
-
-  handleTouchMove(e) {
-    if (!this.isLooking || e.touches.length !== 1) return
-
-    // Don't prevent default if we're not actively looking
-    // This allows scrolling and interaction with UI elements
-    e.preventDefault()
-
-    const touch = e.touches[0]
-    const deltaX = touch.clientX - this.previousTouch.x
-    const deltaY = touch.clientY - this.previousTouch.y
-
-    // Rotate camera based on touch movement
-    this.camera.rotation.y -= deltaX * this.sensitivity
-    this.camera.rotation.x -= deltaY * this.sensitivity
-
-    // Clamp vertical rotation to prevent flipping
-    this.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotation.x))
-
-    this.previousTouch.x = touch.clientX
-    this.previousTouch.y = touch.clientY
-  }
-
-  handleTouchEnd(e) {
-    this.isLooking = false
-  }
-
-  isTouchOverElement(touch, element) {
-    const rect = element.getBoundingClientRect()
-    return touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom
-  }
-}
-
 function createPlayer(camera, geometry, canvas = null) {
   const GRAVITY = 30
   const STEPS_PER_FRAME = 5
@@ -288,12 +306,20 @@ function createPlayer(camera, geometry, canvas = null) {
 
   let playerOnFloor = false
   let mouseTime = 0
+  let isFirstPersonActive = false // Track if first person camera is active
 
   const keyStates = {}
 
   // Initialize mobile controls
   const virtualJoystick = new VirtualJoystick()
-  const touchLookControls = new TouchLookControls(camera, canvas)
+  const touchLookControls = createTouchLookControls(camera, canvas)
+
+  // Initially hide joystick since we start in bird view
+  virtualJoystick.hide()
+
+  // Check if the current camera is the first person camera to set initial state
+  const isInitiallyFirstPerson = false // Set this based on your initial camera state
+  isFirstPersonActive = isInitiallyFirstPerson
 
   // Desktop keyboard events
   document.addEventListener('keydown', (event) => {
@@ -392,9 +418,9 @@ function createPlayer(camera, geometry, canvas = null) {
       movementDetected = true
     }
 
-    // Mobile virtual joystick controls
+    // Mobile virtual joystick controls (only when in first person mode)
     const joystickDirection = virtualJoystick.getDirection()
-    if (Math.abs(joystickDirection.x) > 0.1 || Math.abs(joystickDirection.y) > 0.1) {
+    if (isFirstPersonActive && (Math.abs(joystickDirection.x) > 0.1 || Math.abs(joystickDirection.y) > 0.1)) {
       // Forward/Backward movement (joystick Y becomes forward/backward)
       playerVelocity.add(getForwardVector().multiplyScalar(-joystickDirection.y * speedDelta))
       // Left/Right movement (joystick X becomes strafe)
@@ -436,9 +462,48 @@ function createPlayer(camera, geometry, canvas = null) {
     }
   }
 
-  // Add method to toggle mobile controls visibility
+  // Method to enable/disable mobile controls based on camera mode
+  playerCollider.setFirstPersonMode = (isFirstPerson) => {
+    console.log('setFirstPersonMode called with:', isFirstPerson)
+    console.log('touchLookControls exists:', !!touchLookControls)
+    console.log('touchLookControls.enable exists:', !!(touchLookControls && touchLookControls.enable))
+
+    isFirstPersonActive = isFirstPerson
+    if (isFirstPerson) {
+      virtualJoystick.show()
+      if (touchLookControls && typeof touchLookControls.enable === 'function') {
+        console.log('Calling touchLookControls.enable()')
+        touchLookControls.enable()
+      } else {
+        console.log('touchLookControls.enable not available')
+      }
+    } else {
+      virtualJoystick.hide()
+      if (touchLookControls && typeof touchLookControls.disable === 'function') {
+        console.log('Calling touchLookControls.disable()')
+        touchLookControls.disable()
+      } else {
+        console.log('touchLookControls.disable not available')
+      }
+    }
+  }
+
+  // Method to update camera reference (useful when switching cameras)
+  playerCollider.updateCamera = (newCamera) => {
+    if (touchLookControls) {
+      touchLookControls.camera = newCamera
+    }
+  }
+
+  // Add method to toggle mobile controls visibility (keep existing methods for compatibility)
   playerCollider.showMobileControls = () => virtualJoystick.show()
   playerCollider.hideMobileControls = () => virtualJoystick.hide()
+
+  // Debug method
+  playerCollider.debugTouchControls = () => {
+    console.log('TouchLookControls state:', touchLookControls ? touchLookControls.getState() : 'null')
+    console.log('isFirstPersonActive:', isFirstPersonActive)
+  }
 
   return playerCollider
 }

@@ -196,11 +196,37 @@ class VirtualJoystick {
     this.setupJoystick()
     this.isActive = false
     this.direction = { x: 0, y: 0 }
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
-    if (this.isMobile) {
-      this.show()
-    }
+    // Improved mobile detection
+    this.isMobile = this.detectMobile()
+
+    // Don't automatically show - let the camera switching logic handle this
+    console.log('VirtualJoystick: isMobile =', this.isMobile)
+  }
+
+  // More reliable mobile detection
+  detectMobile() {
+    // Check for touch support
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+
+    // Check user agent
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+    const isMobileUA = mobileRegex.test(navigator.userAgent)
+
+    // Check screen size (optional additional check)
+    const isSmallScreen = window.innerWidth <= 768
+
+    // Combine checks - must have touch AND (mobile UA OR small screen)
+    const isMobile = hasTouch && (isMobileUA || isSmallScreen)
+
+    console.log('Mobile detection:', {
+      hasTouch,
+      isMobileUA,
+      isSmallScreen,
+      finalResult: isMobile,
+    })
+
+    return isMobile
   }
 
   setupJoystick() {
@@ -470,12 +496,12 @@ function createPlayer(camera, geometry, canvas = null) {
 
     isFirstPersonActive = isFirstPerson
     if (isFirstPerson) {
-      virtualJoystick.show()
-      if (touchLookControls && typeof touchLookControls.enable === 'function') {
-        console.log('Calling touchLookControls.enable()')
-        touchLookControls.enable()
-      } else {
-        console.log('touchLookControls.enable not available')
+      if (virtualJoystick.isMobile) {
+        virtualJoystick.show()
+        if (touchLookControls && typeof touchLookControls.enable === 'function') {
+          console.log('Calling touchLookControls.enable()')
+          touchLookControls.enable()
+        }
       }
     } else {
       virtualJoystick.hide()
